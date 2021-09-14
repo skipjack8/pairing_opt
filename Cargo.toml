@@ -1,5 +1,5 @@
 [package]
-name = "pairing_ce"
+name = "pairing_opt"
 version = "0.26.0"
 authors = [
     "Sean Bowe <ewillbefull@gmail.com>",
@@ -19,8 +19,10 @@ edition = "2018"
 rand = "0.4"
 byteorder = "1"
 cfg-if = "1.0"
-ff = {package = "ff_ce", version = "0.13.*", features = ["derive"]}
-# ff = { path = '../ff', package = "ff_ce", features = ["derive"]}
+ff = {package = "ff_opt", git = "https://github.com/skipjack8/ff_opt", branch = "opt", features = ["derive"]}
+#mcl = { package = "mcl_rust", git = "https://github.com/skipjack8/mcl-rust", branch = "bn" }
+lazy_static = "1.2.0"
+rand_core = "0.5.1"
 
 [features]
 default = []

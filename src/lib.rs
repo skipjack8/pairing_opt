@@ -1,5 +1,4 @@
 #![cfg_attr(feature = "asm", feature(asm))]
-
 // `clippy` is a code linting tool for improving code quality by catching
 // common mistakes or strange code patterns. If the `cargo-clippy` feature
 // is provided, all compiler warnings are prohibited.
@@ -26,6 +25,7 @@ pub use ff::*;
 pub mod bls12_381;
 pub mod bn256;
 pub mod compact_bn256;
+mod mcl;
 
 mod wnaf;
 pub use self::wnaf::Wnaf;
@@ -34,7 +34,7 @@ mod base;
 pub use self::base::*;
 
 use ff::{Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, ScalarEngine, SqrtField};
-use std::{error::Error};
+use std::error::Error;
 use std::fmt;
 
 /// An "engine" is a collection of types (fields, elliptic curve groups, etc.)
@@ -42,12 +42,7 @@ use std::fmt;
 /// of prime order `r`, and are equipped with a bilinear pairing function.
 pub trait Engine: ScalarEngine {
     /// The projective representation of an element in G1.
-    type G1: CurveProjective<
-            Engine = Self,
-            Base = Self::Fq,
-            Scalar = Self::Fr,
-            Affine = Self::G1Affine,
-        >
+    type G1: CurveProjective<Engine = Self, Base = Self::Fq, Scalar = Self::Fr, Affine = Self::G1Affine>
         + From<Self::G1Affine>;
 
     /// The affine representation of an element in G1.
@@ -58,16 +53,11 @@ pub trait Engine: ScalarEngine {
             Projective = Self::G1,
             Pair = Self::G2Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G1> + RawEncodable;
+        > + From<Self::G1>
+        + RawEncodable;
 
     /// The projective representation of an element in G2.
-    type G2: CurveProjective<
-            Engine = Self,
-            Base = Self::Fqe,
-            Scalar = Self::Fr,
-            Affine = Self::G2Affine,
-        >
+    type G2: CurveProjective<Engine = Self, Base = Self::Fqe, Scalar = Self::Fr, Affine = Self::G2Affine>
         + From<Self::G2Affine>;
 
     /// The affine representation of an element in G2.
@@ -78,8 +68,7 @@ pub trait Engine: ScalarEngine {
             Projective = Self::G2,
             Pair = Self::G1Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G2>;
+        > + From<Self::G2>;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SqrtField;
@@ -111,7 +100,8 @@ pub trait Engine: ScalarEngine {
     {
         Self::final_exponentiation(&Self::miller_loop(
             [(&(p.into().prepare()), &(q.into().prepare()))].iter(),
-        )).unwrap()
+        ))
+        .unwrap()
     }
 }
 
@@ -190,7 +180,7 @@ pub trait CurveProjective:
     fn as_xyz(&self) -> (&Self::Base, &Self::Base, &Self::Base) {
         unimplemented!("default implementation does not exist for this function")
     }
-    
+
     /// Returns underlying X, Y and Z coordinates. Users should check for infinity
     /// outside of this call
     fn into_xyz_unchecked(self) -> (Self::Base, Self::Base, Self::Base) {
@@ -205,7 +195,11 @@ pub trait CurveProjective:
 
     /// Creates a point from raw X, Y and Z coordinates. Point of infinity is encoded as (0,1,0) by default.
     /// On-curve check is performed
-    fn from_xyz_checked(_x: Self::Base, _y: Self::Base, _z: Self::Base) -> Result<Self, GroupDecodingError> {
+    fn from_xyz_checked(
+        _x: Self::Base,
+        _y: Self::Base,
+        _z: Self::Base,
+    ) -> Result<Self, GroupDecodingError> {
         unimplemented!("default implementation does not exist for this function")
     }
 }
@@ -265,7 +259,7 @@ pub trait CurveAffine:
     /// Returns references to underlying X and Y coordinates. Users should check for infinity
     /// outside of this call
     fn as_xy(&self) -> (&Self::Base, &Self::Base);
-    
+
     /// Returns underlying X and Y coordinates. Users should check for infinity
     /// outside of this call
     fn into_xy_unchecked(self) -> (Self::Base, Self::Base);
@@ -291,10 +285,16 @@ pub trait RawEncodable: CurveAffine {
     fn into_raw_uncompressed_le(&self) -> Self::Uncompressed;
 
     /// Creates a point from raw encoded coordinates without checking on curve
-    fn from_raw_uncompressed_le_unchecked(encoded: &Self::Uncompressed, infinity: bool) -> Result<Self, GroupDecodingError>;
+    fn from_raw_uncompressed_le_unchecked(
+        encoded: &Self::Uncompressed,
+        infinity: bool,
+    ) -> Result<Self, GroupDecodingError>;
 
     /// Creates a point from raw encoded coordinates
-    fn from_raw_uncompressed_le(encoded: &Self::Uncompressed, infinity: bool) -> Result<Self, GroupDecodingError>;
+    fn from_raw_uncompressed_le(
+        encoded: &Self::Uncompressed,
+        infinity: bool,
+    ) -> Result<Self, GroupDecodingError>;
 }
 
 /// An encoded elliptic curve point, which should essentially wrap a `[u8; N]`.

@@ -4,10 +4,11 @@ mod fq12;
 mod fq2;
 mod fq6;
 mod fr;
+mod g1;
 
 pub use self::ec::{
-    G1, G1Affine, G1Compressed, G1Prepared, G1Uncompressed,
-    G2, G2Affine, G2Compressed, G2Prepared, G2Uncompressed,
+    G1Affine, G1Compressed, G1Prepared, G1Uncompressed, G2Affine, G2Compressed, G2Prepared,
+    G2Uncompressed, G1, G2,
 };
 pub use self::fq::{Fq, FqRepr, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2};
 pub use self::fq12::Fq12;
@@ -26,17 +27,11 @@ pub struct Bn256;
 pub const BN_U: u64 = 4965661367192848881;
 
 // // 6U+2 for in NAF form
-pub const SIX_U_PLUS_2_NAF : [i8; 65] = [
-    0, 0, 0, 1, 0, 1, 0, -1,
-    0, 0, 1, -1, 0, 0, 1, 0,
-    0, 1, 1, 0, -1, 0, 0, 1, 
-    0, -1, 0, 0, 0, 0, 1, 1,
-	1, 0, 0, -1, 0, 0, 1, 0, 
-    0, 0, 0, 0, -1, 0, 0, 1,
-	1, 0, 0, -1, 0, 0, 0, 1, 
-    1, 0, -1, 0, 0, 1, 0, 1, 
-    1];
-
+pub const SIX_U_PLUS_2_NAF: [i8; 65] = [
+    0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0,
+    1, 1, 1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0,
+    0, 1, 0, 1, 1,
+];
 
 impl ScalarEngine for Bn256 {
     type Fr = Fr;
@@ -83,7 +78,7 @@ impl Engine for Bn256 {
         }
 
         let mut f = Fq12::one();
-        
+
         for i in (1..SIX_U_PLUS_2_NAF.len()).rev() {
             if i != SIX_U_PLUS_2_NAF.len() - 1 {
                 f.square();
@@ -91,21 +86,19 @@ impl Engine for Bn256 {
             for &mut (p, ref mut coeffs) in &mut pairs {
                 ell(&mut f, coeffs.next().unwrap(), &p.0);
             }
-            let x = SIX_U_PLUS_2_NAF[i-1];
+            let x = SIX_U_PLUS_2_NAF[i - 1];
             match x {
                 1 => {
-                        for &mut (p, ref mut coeffs) in &mut pairs {
-                            ell(&mut f, coeffs.next().unwrap(), &p.0);
-                        }
+                    for &mut (p, ref mut coeffs) in &mut pairs {
+                        ell(&mut f, coeffs.next().unwrap(), &p.0);
                     }
-                -1 => {
-                        for &mut (p, ref mut coeffs) in &mut pairs {
-                            ell(&mut f, coeffs.next().unwrap(), &p.0);
-                        }
-                    }
-                _ => {
-                    continue
                 }
+                -1 => {
+                    for &mut (p, ref mut coeffs) in &mut pairs {
+                        ell(&mut f, coeffs.next().unwrap(), &p.0);
+                    }
+                }
+                _ => continue,
             }
         }
 
@@ -147,7 +140,7 @@ impl Engine for Bn256 {
                 let mut fp = r;
                 fp.frobenius_map(1);
 
-	            let mut fp2 = r;
+                let mut fp2 = r;
                 fp2.frobenius_map(2);
                 let mut fp3 = fp2;
                 fp3.frobenius_map(1);
@@ -193,7 +186,6 @@ impl Engine for Bn256 {
                 y6.mul_assign(&fu3p);
                 y6.conjugate();
 
-
                 y6.square();
                 y6.mul_assign(&y4);
                 y6.mul_assign(&y5);
@@ -221,7 +213,6 @@ impl Engine for Bn256 {
             None => None,
         }
     }
-
 }
 
 impl G2Prepared {
@@ -401,7 +392,7 @@ impl G2Prepared {
 
             let mut ztsquared = r.z;
             ztsquared.square();
-            
+
             t10.sub_assign(&ztsquared);
 
             // corresponds to line 18
@@ -429,15 +420,15 @@ impl G2Prepared {
         negq.negate();
 
         for i in (1..SIX_U_PLUS_2_NAF.len()).rev() {
-            coeffs.push(doubling_step(& mut r));
-            let x = SIX_U_PLUS_2_NAF[i-1];
+            coeffs.push(doubling_step(&mut r));
+            let x = SIX_U_PLUS_2_NAF[i - 1];
             match x {
                 1 => {
-                        coeffs.push(addition_step(&mut r, &q));
-                    }
+                    coeffs.push(addition_step(&mut r, &q));
+                }
                 -1 => {
-                        coeffs.push(addition_step(&mut r, &negq));
-                    }
+                    coeffs.push(addition_step(&mut r, &negq));
+                }
                 _ => continue,
             }
         }
@@ -464,15 +455,14 @@ impl G2Prepared {
     }
 }
 
-
 #[cfg(test)]
 use rand::{Rand, SeedableRng, XorShiftRng};
 
 #[test]
 fn test_pairing() {
-    use crate::{CurveProjective};
+    use crate::CurveProjective;
     let mut g1 = G1::one();
-    
+
     let mut g2 = G2::one();
     g2.double();
 
@@ -547,14 +537,12 @@ fn test_pairing() {
         let pair_ba = Bn256::pairing(g1, g2);
 
         assert_eq!(pair_ab, pair_ba);
-
     }
-
 }
 
 #[test]
 fn random_bilinearity_tests() {
-    use crate::{CurveProjective};
+    use crate::CurveProjective;
     use ff::PrimeField;
 
     let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
@@ -598,4 +586,16 @@ fn random_bilinearity_tests() {
 #[test]
 fn bn256_engine_tests() {
     crate::tests::engine::engine_tests::<Bn256>();
+}
+
+use crate::mcl::{init, CurveType};
+use lazy_static::lazy_static;
+lazy_static! {
+    pub static ref IS_INIT: bool = init(CurveType::BN254);
+}
+
+pub fn check_curve_init() {
+    if !*IS_INIT {
+        init(CurveType::BN254);
+    }
 }
