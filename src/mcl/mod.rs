@@ -6,7 +6,7 @@ use std::ops::{Sub, SubAssign};
 use std::os::raw::c_int;
 
 #[link(name = "mcl", kind = "static")]
-#[link(name = "mclbn384_256", kind = "static")]
+#[link(name = "mclbn256", kind = "static")]
 #[link(name = "gmp")]
 #[link(name = "c++")]
 // #[link(name = "crypto")]
@@ -71,14 +71,14 @@ extern "C" {
     fn mclBnFp_setHashOf(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFp_setByCSPRNG(x: *mut Fp);
 
-    fn mclBnFp_add(z: *mut Fp, x: *const Fp, y: *const Fp);
+    pub fn mclBnFp_add(z: *mut Fp, x: *const Fp, y: *const Fp);
     fn mclBnFp_sub(z: *mut Fp, x: *const Fp, y: *const Fp);
     pub fn mclBnFp_neg(y: *mut Fp, x: *const Fp);
 
     fn mclBnFp_mul(z: *mut Fp, x: *const Fp, y: *const Fp);
     fn mclBnFp_div(z: *mut Fp, x: *const Fp, y: *const Fp);
     fn mclBnFp_inv(y: *mut Fp, x: *const Fp);
-    fn mclBnFp_sqr(y: *mut Fp, x: *const Fp);
+    pub fn mclBnFp_sqr(y: *mut Fp, x: *const Fp);
     fn mclBnFp_squareRoot(y: *mut Fp, x: *const Fp) -> i32;
 
     // Fp2
@@ -164,10 +164,9 @@ extern "C" {
 
 pub enum CurveType {
     BN254 = 4,
-    BLS12_381 = 5,
 }
 
-const MCLBN_FP_UNIT_SIZE: usize = 6;
+const MCLBN_FP_UNIT_SIZE: usize = 4;
 const MCLBN_FR_UNIT_SIZE: usize = 4;
 const MCLBN_COMPILED_TIME_VAR: c_int =
     MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int;
