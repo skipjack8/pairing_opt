@@ -347,8 +347,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
 
 impl ff::Field for Fr {
     fn zero() -> Self {
-        check_curve_init();
-        Fr(MclFr::default())
+        Fr(MclFr { d: [0, 0, 0, 0] })
     }
 
     fn one() -> Self {
@@ -666,6 +665,12 @@ impl Fr {
     /// Returns true if this element is zero.
     pub fn is_zero(&self) -> bool {
         self.0.d.iter().all(|&e| e == 0)
+    }
+
+    #[inline(always)]
+    fn is_valid(&self) -> bool {
+        check_curve_init();
+        self.0.is_valid()
     }
 }
 
@@ -1443,7 +1448,7 @@ mod tests {
                     0x2eede1c9c89528ca,
                 ],
             });
-            // assert!(tmp.is_valid());
+            assert!(tmp.is_valid());
             // Test that adding zero has no effect.
             tmp.add_assign(&Fr(MclFr { d: [0, 0, 0, 0] }));
             assert_eq!(
@@ -1552,8 +1557,8 @@ mod tests {
             tmp2.add_assign(&c);
             tmp2.add_assign(&a);
 
-            // assert!(tmp1.is_valid());
-            // assert!(tmp2.is_valid());
+            assert!(tmp1.is_valid());
+            assert!(tmp2.is_valid());
             assert_eq!(tmp1, tmp2, "round {}", i);
         }
     }
@@ -1750,7 +1755,7 @@ mod tests {
                 0x30644e72e131a028,
             ],
         });
-        // assert!(a.is_valid());
+        assert!(a.is_valid());
         a.square();
         assert_eq!(
             a,

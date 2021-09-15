@@ -421,7 +421,7 @@ macro_rules! ec_impl {
     };
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Fp {
     pub d: [u64; MCLBN_FP_UNIT_SIZE],
