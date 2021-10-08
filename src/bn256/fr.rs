@@ -1,4 +1,4 @@
-//! An implementation of the BN256 MclFr field $\mathbb{F}_q$
+//! An implementation of the BN256 mcl_fr field $\mathbb{F}_q$
 //! where `q = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
 //! where `generator = 7`
 use core::{
@@ -8,7 +8,7 @@ use core::{
 use std::hash::{Hash, Hasher};
 
 use crate::bn256::check_curve_init;
-use crate::mcl::Fr as MclFr;
+use crate::mcl::Fr as mcl_fr;
 use crate::mcl::*;
 use ff::{Field, PrimeField, PrimeFieldDecodingError};
 
@@ -18,7 +18,7 @@ use ff::{Field, PrimeField, PrimeFieldDecodingError};
 /// The inner representation is stored in Montgomery form.
 
 #[derive(Default, Clone, Copy)]
-pub struct Fr(pub(crate) MclFr);
+pub struct Fr(pub(crate) mcl_fr);
 
 /// Representation of a `Fr`, in regular coordinates.
 #[derive(Copy, Clone, Default)]
@@ -36,14 +36,14 @@ impl AsMut<[u64]> for FrRepr {
     }
 }
 
-impl AsRef<MclFr> for Fr {
-    fn as_ref(&self) -> &MclFr {
+impl AsRef<mcl_fr> for Fr {
+    fn as_ref(&self) -> &mcl_fr {
         &self.0
     }
 }
 
-impl AsMut<MclFr> for Fr {
-    fn as_mut(&mut self) -> &mut MclFr {
+impl AsMut<mcl_fr> for Fr {
+    fn as_mut(&mut self) -> &mut mcl_fr {
         &mut self.0
     }
 }
@@ -279,14 +279,14 @@ impl From<Fr> for FrRepr {
     }
 }
 
-impl From<Fr> for MclFr {
-    fn from(val: Fr) -> MclFr {
+impl From<Fr> for mcl_fr {
+    fn from(val: Fr) -> mcl_fr {
         val.0
     }
 }
 
-impl From<MclFr> for Fr {
-    fn from(val: MclFr) -> Fr {
+impl From<mcl_fr> for Fr {
+    fn from(val: mcl_fr) -> Fr {
         Fr(val)
     }
 }
@@ -347,12 +347,18 @@ impl<'a, 'b> Mul<&'b Fr> for &'a Fr {
 
 impl ff::Field for Fr {
     fn zero() -> Self {
-        Fr(MclFr { d: [0, 0, 0, 0] })
+        Fr(mcl_fr { d: [0, 0, 0, 0] })
     }
 
     fn one() -> Self {
-        check_curve_init();
-        Fr(MclFr::from_int(1))
+        Fr(mcl_fr {
+            d: [
+                0xac96341c4ffffffb,
+                0x36fc76959f60cd29,
+                0x666ea36f7879462e,
+                0xe0a77c19a07df2f,
+            ],
+        })
     }
 
     fn is_zero(&self) -> bool {
@@ -395,8 +401,8 @@ impl ff::Field for Fr {
             return None;
         }
 
-        let mut x = unsafe { MclFr::uninit() };
-        MclFr::inv(&mut x, self.as_ref());
+        let mut x = unsafe { mcl_fr::uninit() };
+        mcl_fr::inv(&mut x, self.as_ref());
 
         Some(Fr(x))
     }
@@ -419,7 +425,7 @@ impl ::rand::Rand for Fr {
     /// `_rng` is for compatible with old call
     fn rand<R: ::rand::Rng>(_rng: &mut R) -> Self {
         check_curve_init();
-        let mut x = MclFr::default();
+        let mut x = mcl_fr::default();
         x.set_by_csprng();
         Fr(x)
     }
@@ -431,7 +437,7 @@ impl FrRepr {
     }
 }
 
-const R2: Fr = Fr(MclFr {
+const R2: Fr = Fr(mcl_fr {
     d: [
         0x1bb8e645ae216da7,
         0x53fe3ab1e35c59e3,
@@ -444,7 +450,7 @@ impl ff::PrimeField for Fr {
 
     fn from_repr(repr: Self::Repr) -> Result<Self, ff::PrimeFieldDecodingError> {
         if FrRepr(repr.0) < MODULUS {
-            let mut out = Fr(MclFr { d: repr.0 });
+            let mut out = Fr(mcl_fr { d: repr.0 });
             out.mul_assign(&R2);
 
             Ok(out)
@@ -456,7 +462,7 @@ impl ff::PrimeField for Fr {
     }
     fn from_raw_repr(repr: Self::Repr) -> Result<Self, PrimeFieldDecodingError> {
         if FrRepr(repr.0) < MODULUS {
-            Ok(Fr(MclFr { d: repr.0 }))
+            Ok(Fr(mcl_fr { d: repr.0 }))
         } else {
             Err(ff::PrimeFieldDecodingError::NotInField(
                 "not in field".to_string(),
@@ -467,8 +473,8 @@ impl ff::PrimeField for Fr {
     /// the number is an element of the field.
     fn into_repr(&self) -> Self::Repr {
         check_curve_init();
-        let mut out = unsafe { MclFr::uninit() };
-        MclFr::mul(&mut out, self.as_ref(), &MclFr { d: R.0 });
+        let mut out = unsafe { mcl_fr::uninit() };
+        mcl_fr::mul(&mut out, self.as_ref(), &mcl_fr { d: R.0 });
         FrRepr(out.d)
     }
 
@@ -491,7 +497,7 @@ impl ff::PrimeField for Fr {
 
     // 2 ^ s * t = modulus -1, root_of_unity = 7 ^ t
     fn root_of_unity() -> Self {
-        Fr(MclFr {
+        Fr(mcl_fr {
             d: [
                 0x9632c7c5b639feb8,
                 0x985ce3400d0ff299,
@@ -589,7 +595,7 @@ impl Fr {
     /// a Fr into a `Fr`, failing if the input is not canonical.
     pub fn from_bytes_le(bytes: &[u8; 32]) -> Option<Fr> {
         check_curve_init();
-        let mut raw = unsafe { MclFr::uninit() };
+        let mut raw = unsafe { mcl_fr::uninit() };
 
         let l = raw.deserialize(bytes);
 
@@ -634,8 +640,8 @@ impl Fr {
     pub fn mul(&self, rhs: &Self) -> Self {
         check_curve_init();
 
-        let mut out = unsafe { MclFr::uninit() };
-        MclFr::mul(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fr::uninit() };
+        mcl_fr::mul(&mut out, self.as_ref(), rhs.as_ref());
 
         Fr(out)
     }
@@ -645,8 +651,8 @@ impl Fr {
     pub fn sub(&self, rhs: &Self) -> Self {
         check_curve_init();
 
-        let mut out = unsafe { MclFr::uninit() };
-        MclFr::sub(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fr::uninit() };
+        mcl_fr::sub(&mut out, self.as_ref(), rhs.as_ref());
 
         Fr(out)
     }
@@ -656,8 +662,8 @@ impl Fr {
     pub fn add(&self, rhs: &Self) -> Self {
         check_curve_init();
 
-        let mut out = unsafe { MclFr::uninit() };
-        MclFr::add(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fr::uninit() };
+        mcl_fr::add(&mut out, self.as_ref(), rhs.as_ref());
 
         Fr(out)
     }
@@ -677,7 +683,7 @@ impl Fr {
 #[cfg(test)]
 mod tests {
     use super::{Fr, FrRepr, MODULUS, R};
-    use crate::mcl::Fr as MclFr;
+    use crate::mcl::Fr as mcl_fr;
     use crate::rand::Rand;
     use ff::{Field, PrimeField, PrimeFieldRepr, SqrtField};
 
@@ -692,7 +698,7 @@ mod tests {
         0x216d0b17f4e44a5,
     ]);
 
-    const LARGEST: Fr = Fr(MclFr {
+    const LARGEST: Fr = Fr(mcl_fr {
         d: [
             0x43e1f593f0000000,
             0x2833e84879b97091,
@@ -853,7 +859,7 @@ mod tests {
 
         assert_eq!(
             tmp,
-            Fr(MclFr {
+            Fr(mcl_fr {
                 d: [
                     0x43e1f593efffffff,
                     0x2833e84879b97091,
@@ -864,7 +870,7 @@ mod tests {
         );
 
         let mut tmp = LARGEST;
-        tmp.add_assign(&Fr(MclFr { d: [1, 0, 0, 0] }));
+        tmp.add_assign(&Fr(mcl_fr { d: [1, 0, 0, 0] }));
 
         assert_eq!(tmp, Fr::zero());
     }
@@ -873,11 +879,11 @@ mod tests {
     fn test_negation() {
         let tmp = -&LARGEST;
 
-        assert_eq!(tmp, Fr(MclFr { d: [1, 0, 0, 0] }));
+        assert_eq!(tmp, Fr(mcl_fr { d: [1, 0, 0, 0] }));
 
         let tmp = -&Fr::zero();
         assert_eq!(tmp, Fr::zero());
-        let tmp = -&Fr(MclFr { d: [1, 0, 0, 0] });
+        let tmp = -&Fr(mcl_fr { d: [1, 0, 0, 0] });
         assert_eq!(tmp, LARGEST);
 
         {
@@ -910,7 +916,7 @@ mod tests {
         let mut tmp = Fr::zero();
         tmp = &tmp - &LARGEST;
 
-        let mut tmp2 = Fr(MclFr { d: MODULUS.0 });
+        let mut tmp2 = Fr(mcl_fr { d: MODULUS.0 });
         tmp2 = &tmp2 - &LARGEST;
 
         assert_eq!(tmp, tmp2);
@@ -918,7 +924,7 @@ mod tests {
 
     #[test]
     fn test_multiplication() {
-        let mut tmp = Fr(MclFr {
+        let mut tmp = Fr(mcl_fr {
             d: [
                 0x6b7e9b8faeefc81a,
                 0xe30a8463f348ba42,
@@ -927,7 +933,7 @@ mod tests {
             ],
         });
         tmp = &tmp
-            * &Fr(MclFr {
+            * &Fr(mcl_fr {
                 d: [
                     0x13ae28e3bc35ebeb,
                     0xa10f4488075cae2c,
@@ -937,7 +943,7 @@ mod tests {
             });
         assert_eq!(
             tmp,
-            Fr(MclFr {
+            Fr(mcl_fr {
                 d: [
                     0x3070c6119986c002,
                     0x357b4df705fda102,
@@ -1019,7 +1025,7 @@ mod tests {
             assert_eq!(Fr::zero().sqrt().unwrap(), Fr::zero());
         }
 
-        let mut square = Fr(MclFr {
+        let mut square = Fr(mcl_fr {
             d: [
                 0x46cd85a5f273077e,
                 0x1d30c47dd68fc735,
@@ -1440,7 +1446,7 @@ mod tests {
     fn test_Fr_add_assign() {
         {
             // Random number
-            let mut tmp = Fr(MclFr {
+            let mut tmp = Fr(mcl_fr {
                 d: [
                     0x437ce7616d580765,
                     0xd42d1ccb29d1235b,
@@ -1450,10 +1456,10 @@ mod tests {
             });
             assert!(tmp.is_valid());
             // Test that adding zero has no effect.
-            tmp.add_assign(&Fr(MclFr { d: [0, 0, 0, 0] }));
+            tmp.add_assign(&Fr(mcl_fr { d: [0, 0, 0, 0] }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x437ce7616d580765,
                         0xd42d1ccb29d1235b,
@@ -1463,10 +1469,10 @@ mod tests {
                 })
             );
             // Add one and test for the result.
-            tmp.add_assign(&Fr(MclFr { d: [1, 0, 0, 0] }));
+            tmp.add_assign(&Fr(mcl_fr { d: [1, 0, 0, 0] }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x437ce7616d580766,
                         0xd42d1ccb29d1235b,
@@ -1476,7 +1482,7 @@ mod tests {
                 })
             );
             // Add another random number that exercises the reduction.
-            tmp.add_assign(&Fr(MclFr {
+            tmp.add_assign(&Fr(mcl_fr {
                 d: [
                     0x946f435944f7dc79,
                     0xb55e7ee6533a9b9b,
@@ -1486,7 +1492,7 @@ mod tests {
             }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x940a3526c24fe3de,
                         0x6157b36903524e65,
@@ -1496,7 +1502,7 @@ mod tests {
                 })
             );
             // Add one to (r - 1) and test for the result.
-            tmp = Fr(MclFr {
+            tmp = Fr(mcl_fr {
                 d: [
                     0x43e1f593f0000000,
                     0x2833e84879b97091,
@@ -1504,10 +1510,10 @@ mod tests {
                     0x30644e72e131a029,
                 ],
             });
-            tmp.add_assign(&Fr(MclFr { d: [1, 0, 0, 0] }));
+            tmp.add_assign(&Fr(mcl_fr { d: [1, 0, 0, 0] }));
             assert!(tmp.into_repr().is_zero());
             // Add a random number to another one such that the result is r - 1
-            tmp = Fr(MclFr {
+            tmp = Fr(mcl_fr {
                 d: [
                     0xf1c7a341cccb6190,
                     0x7e983254a196515f,
@@ -1515,7 +1521,7 @@ mod tests {
                     0x1593c0229f59dd08,
                 ],
             });
-            tmp.add_assign(&Fr(MclFr {
+            tmp.add_assign(&Fr(mcl_fr {
                 d: [
                     0x521a525223349e70,
                     0xa99bb5f3d8231f31,
@@ -1525,7 +1531,7 @@ mod tests {
             }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x43e1f593f0000000,
                         0x2833e84879b97091,
@@ -1535,7 +1541,7 @@ mod tests {
                 })
             );
             // Add one to the result and test for it.
-            tmp.add_assign(&Fr(MclFr { d: [1, 0, 0, 0] }));
+            tmp.add_assign(&Fr(mcl_fr { d: [1, 0, 0, 0] }));
             assert!(tmp.into_repr().is_zero());
         }
 
@@ -1568,7 +1574,7 @@ mod tests {
     fn test_Fr_sub_assign() {
         {
             // Test arbitrary subtraction that tests reduction.
-            let mut tmp = Fr(MclFr {
+            let mut tmp = Fr(mcl_fr {
                 d: [
                     0x6a68c64b6f735a2b,
                     0xd5f4d143fe0a1972,
@@ -1576,7 +1582,7 @@ mod tests {
                     0x29f37391f30915c,
                 ],
             });
-            tmp.sub_assign(&Fr(MclFr {
+            tmp.sub_assign(&Fr(mcl_fr {
                 d: [
                     0xade5adacdccb6190,
                     0xaa21ee0f27db3ccd,
@@ -1586,7 +1592,7 @@ mod tests {
             }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x650e3282a7f89c,
                         0x5406cb7d4fe84d36,
@@ -1597,7 +1603,7 @@ mod tests {
             );
 
             // Test the opposite subtraction which doesn't test reduction.
-            tmp = Fr(MclFr {
+            tmp = Fr(mcl_fr {
                 d: [
                     0xade5adacdccb6190,
                     0xaa21ee0f27db3ccd,
@@ -1605,7 +1611,7 @@ mod tests {
                     0x301d1902e7c5ba27,
                 ],
             });
-            tmp.sub_assign(&Fr(MclFr {
+            tmp.sub_assign(&Fr(mcl_fr {
                 d: [
                     0x6a68c64b6f735a2b,
                     0xd5f4d143fe0a1972,
@@ -1615,7 +1621,7 @@ mod tests {
             }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x437ce7616d580765,
                         0xd42d1ccb29d1235b,
@@ -1626,11 +1632,11 @@ mod tests {
             );
 
             // Test for sensible results with zero
-            tmp = Fr(MclFr { d: [0, 0, 0, 0] });
-            tmp.sub_assign(&Fr(MclFr { d: [0, 0, 0, 0] }));
+            tmp = Fr(mcl_fr { d: [0, 0, 0, 0] });
+            tmp.sub_assign(&Fr(mcl_fr { d: [0, 0, 0, 0] }));
             assert!(tmp.is_zero());
 
-            tmp = Fr(MclFr {
+            tmp = Fr(mcl_fr {
                 d: [
                     0x437ce7616d580765,
                     0xd42d1ccb29d1235b,
@@ -1638,10 +1644,10 @@ mod tests {
                     0x301de1c9c89528ca,
                 ],
             });
-            tmp.sub_assign(&Fr(MclFr { d: [0, 0, 0, 0] }));
+            tmp.sub_assign(&Fr(mcl_fr { d: [0, 0, 0, 0] }));
             assert_eq!(
                 tmp,
-                Fr(MclFr {
+                Fr(mcl_fr {
                     d: [
                         0x437ce7616d580765,
                         0xd42d1ccb29d1235b,
@@ -1673,7 +1679,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_Fr_mul_assign() {
-        let mut tmp = Fr(MclFr {
+        let mut tmp = Fr(mcl_fr {
             d: [
                 0x6b7e9b8faeefc81a,
                 0xe30a8463f348ba42,
@@ -1681,7 +1687,7 @@ mod tests {
                 0x30303651bd7c774d,
             ],
         });
-        tmp.mul_assign(&Fr(MclFr {
+        tmp.mul_assign(&Fr(mcl_fr {
             d: [
                 0x13ae28e3bc35ebeb,
                 0xa10f4488075cae2c,
@@ -1691,7 +1697,7 @@ mod tests {
         }));
         assert_eq!(
             tmp,
-            Fr(MclFr {
+            Fr(mcl_fr {
                 d: [
                     0xfbf375fa38116eeb,
                     0x1fb40ee0a5a7520c,
@@ -1747,7 +1753,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_Fr_squaring() {
-        let mut a = Fr(MclFr {
+        let mut a = Fr(mcl_fr {
             d: [
                 0xffffffffffffffff,
                 0xffffffffffffffff,

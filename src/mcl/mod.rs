@@ -96,8 +96,8 @@ extern "C" {
 
     fn mclBnFp2_mul(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
     fn mclBnFp2_div(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
-    fn mclBnFp2_inv(y: *mut Fp2, x: *const Fp2);
-    fn mclBnFp2_sqr(y: *mut Fp2, x: *const Fp2);
+    pub fn mclBnFp2_inv(y: *mut Fp2, x: *const Fp2);
+    pub fn mclBnFp2_sqr(y: *mut Fp2, x: *const Fp2);
     fn mclBnFp2_squareRoot(y: *mut Fp2, x: *const Fp2) -> i32;
 
     // G1
@@ -112,11 +112,11 @@ extern "C" {
 
     fn mclBnG1_add(z: *mut G1, x: *const G1, y: *const G1);
     fn mclBnG1_sub(z: *mut G1, x: *const G1, y: *const G1);
-    fn mclBnG1_neg(y: *mut G1, x: *const G1);
+    pub fn mclBnG1_neg(y: *mut G1, x: *const G1);
 
-    fn mclBnG1_dbl(y: *mut G1, x: *const G1);
-    fn mclBnG1_mul(z: *mut G1, x: *const G1, y: *const Fr);
-    fn mclBnG1_normalize(y: *mut G1, x: *const G1);
+    pub fn mclBnG1_dbl(y: *mut G1, x: *const G1);
+    pub fn mclBnG1_mul(z: *mut G1, x: *const G1, y: *const Fr);
+    pub fn mclBnG1_normalize(y: *mut G1, x: *const G1);
     fn mclBnG1_hashAndMapTo(x: *mut G1, buf: *const u8, bufSize: usize) -> c_int;
 
     // G2
@@ -421,7 +421,7 @@ macro_rules! ec_impl {
     };
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Eq, Hash)]
 #[repr(C)]
 pub struct Fp {
     pub d: [u64; MCLBN_FP_UNIT_SIZE],
@@ -429,6 +429,9 @@ pub struct Fp {
 impl Fp {
     pub fn get_order() -> String {
         get_field_order()
+    }
+    pub fn one() -> Self {
+        unsafe { Fp::from_int(1) }
     }
 }
 common_impl![Fp, mclBnFp_isEqual, mclBnFp_isZero];
@@ -454,7 +457,7 @@ base_field_impl![
 add_op_impl![Fp, mclBnFp_add, mclBnFp_sub, mclBnFp_neg];
 field_mul_op_impl![Fp, mclBnFp_mul, mclBnFp_div, mclBnFp_inv, mclBnFp_sqr];
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy, Eq, Hash)]
 #[repr(C)]
 pub struct Fp2 {
     pub d: [Fp; 2],
@@ -484,6 +487,10 @@ impl Fr {
     pub fn get_order() -> String {
         get_curve_order()
     }
+
+    pub fn one() -> Self {
+        unsafe { Fr::from_int(1) }
+    }
 }
 common_impl![Fr, mclBnFr_isEqual, mclBnFr_isZero];
 is_valid_impl![Fr, mclBnFr_isValid];
@@ -508,7 +515,7 @@ base_field_impl![
 add_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_neg];
 field_mul_op_impl![Fr, mclBnFr_mul, mclBnFr_div, mclBnFr_inv, mclBnFr_sqr];
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy, Eq)]
 #[repr(C)]
 pub struct G1 {
     pub x: Fp,

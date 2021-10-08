@@ -1,6 +1,7 @@
 use super::fq2::Fq2;
 use crate::bn256::check_curve_init;
-use crate::mcl::Fp as MclFq;
+use crate::mcl::Fp as mcl_fq;
+use crate::mcl::Fp2 as mcl_fq2;
 use crate::mcl::*;
 use core::{
     cmp, fmt, mem,
@@ -14,14 +15,14 @@ use std::hash::{Hash, Hasher};
 /// `Fq` values are always in
 /// Montgomery form; i.e., Fq(a) = aR mod q, with R = 2^256.
 #[derive(Copy, Clone)]
-pub struct Fq(pub(crate) MclFq);
+pub struct Fq(pub(crate) mcl_fq);
 
 /// Representation of a `Fq`, in regular coordinates.
 #[derive(Default, Clone, Copy)]
 pub struct FqRepr(pub [u64; 4]);
 
 // B coefficient of BN256 curve, B = 3
-pub const B_COEFF: Fq = Fq(MclFq {
+pub const B_COEFF: Fq = Fq(mcl_fq {
     d: [
         0x7a17caa950ad28d7,
         0x1f6ac17ae15521b9,
@@ -30,31 +31,33 @@ pub const B_COEFF: Fq = Fq(MclFq {
     ],
 });
 
-pub const B_COEFF_FQ2: Fq2 = Fq2 {
-    c0: Fq(MclFq {
-        d: [
-            0x3bf938e377b802a8,
-            0x020b1b273633535d,
-            0x26b7edf049755260,
-            0x2514c6324384a86d,
-        ],
-    }),
-    c1: Fq(MclFq {
-        d: [
-            0x38e7ecccd1dcff67,
-            0x65f0b37d93ce0d3e,
-            0xd749d0dd22ac00aa,
-            0x0141b9ce4a688d4d,
-        ],
-    }),
-};
+pub const B_COEFF_FQ2: Fq2 = Fq2(mcl_fq2 {
+    d: [
+        mcl_fq {
+            d: [
+                0x3bf938e377b802a8,
+                0x020b1b273633535d,
+                0x26b7edf049755260,
+                0x2514c6324384a86d,
+            ],
+        },
+        mcl_fq {
+            d: [
+                0x38e7ecccd1dcff67,
+                0x65f0b37d93ce0d3e,
+                0xd749d0dd22ac00aa,
+                0x0141b9ce4a688d4d,
+            ],
+        },
+    ],
+});
 
 // The generators of G1/G2
 
 // Generator of G1
 // x = 1
 // y = 2
-pub const G1_GENERATOR_X: Fq = Fq(MclFq {
+pub const G1_GENERATOR_X: Fq = Fq(mcl_fq {
     d: [
         0xd35d438dc58f0d9d,
         0x0a78eb28f5c70b3d,
@@ -62,7 +65,7 @@ pub const G1_GENERATOR_X: Fq = Fq(MclFq {
         0x0e0a77c19a07df2f,
     ],
 });
-pub const G1_GENERATOR_Y: Fq = Fq(MclFq {
+pub const G1_GENERATOR_Y: Fq = Fq(mcl_fq {
     d: [
         0xa6ba871b8b1e1b3a,
         0x14f1d651eb8e167b,
@@ -79,7 +82,7 @@ pub const G1_GENERATOR_Y: Fq = Fq(MclFq {
 // y = 4082367875863433681332203403145435568316851327593401208105741076214120093531*u
 //     + 8495653923123431417604973247489272438418190587263600148770280649306958101930
 
-pub const G2_GENERATOR_X_C0: Fq = Fq(MclFq {
+pub const G2_GENERATOR_X_C0: Fq = Fq(mcl_fq {
     d: [
         0x8e83b5d102bc2026,
         0xdceb1935497b0172,
@@ -87,7 +90,7 @@ pub const G2_GENERATOR_X_C0: Fq = Fq(MclFq {
         0x19573841af96503b,
     ],
 });
-pub const G2_GENERATOR_X_C1: Fq = Fq(MclFq {
+pub const G2_GENERATOR_X_C1: Fq = Fq(mcl_fq {
     d: [
         0xafb4737da84c6140,
         0x6043dd5a5802d8c4,
@@ -95,7 +98,7 @@ pub const G2_GENERATOR_X_C1: Fq = Fq(MclFq {
         0x14fef0833aea7b6b,
     ],
 });
-pub const G2_GENERATOR_Y_C0: Fq = Fq(MclFq {
+pub const G2_GENERATOR_Y_C0: Fq = Fq(mcl_fq {
     d: [
         0x619dfa9d886be9f6,
         0xfe7fd297f59e9b78,
@@ -103,7 +106,7 @@ pub const G2_GENERATOR_Y_C0: Fq = Fq(MclFq {
         0x28fd7eebae9e4206,
     ],
 });
-pub const G2_GENERATOR_Y_C1: Fq = Fq(MclFq {
+pub const G2_GENERATOR_Y_C1: Fq = Fq(mcl_fq {
     d: [
         0x64095b56c71856ee,
         0xdc57f922327d3cbb,
@@ -116,7 +119,7 @@ pub const G2_GENERATOR_Y_C1: Fq = Fq(MclFq {
 pub const FROBENIUS_COEFF_FQ2_C1: [Fq; 2] = [
     // Fq(-1)**(((q^0) - 1) / 2)
     // it's 1 in Montgommery form
-    Fq(MclFq {
+    Fq(mcl_fq {
         d: [
             0xd35d438dc58f0d9d,
             0x0a78eb28f5c70b3d,
@@ -125,7 +128,7 @@ pub const FROBENIUS_COEFF_FQ2_C1: [Fq; 2] = [
         ],
     }),
     // Fq(-1)**(((q^1) - 1) / 2)
-    Fq(MclFq {
+    Fq(mcl_fq {
         d: [
             0x68c3488912edefaa,
             0x8d087f6872aabf4f,
@@ -136,435 +139,485 @@ pub const FROBENIUS_COEFF_FQ2_C1: [Fq; 2] = [
 ];
 
 // Fq2(u + 9)**(((q^1) - 1) / 2)
-pub const XI_TO_Q_MINUS_1_OVER_2: Fq2 = Fq2 {
-    c0: Fq(MclFq {
-        d: [
-            0xe4bbdd0c2936b629,
-            0xbb30f162e133bacb,
-            0x31a9d1b6f9645366,
-            0x253570bea500f8dd,
-        ],
-    }),
-    c1: Fq(MclFq {
-        d: [
-            0xa1d77ce45ffe77c7,
-            0x07affd117826d1db,
-            0x6d16bd27bb7edc6b,
-            0x2c87200285defecc,
-        ],
-    }),
-};
+pub const XI_TO_Q_MINUS_1_OVER_2: Fq2 = Fq2(mcl_fq2 {
+    d: [
+        mcl_fq {
+            d: [
+                0xe4bbdd0c2936b629,
+                0xbb30f162e133bacb,
+                0x31a9d1b6f9645366,
+                0x253570bea500f8dd,
+            ],
+        },
+        mcl_fq {
+            d: [
+                0xa1d77ce45ffe77c7,
+                0x07affd117826d1db,
+                0x6d16bd27bb7edc6b,
+                0x2c87200285defecc,
+            ],
+        },
+    ],
+});
 
 pub const FROBENIUS_COEFF_FQ6_C1: [Fq2; 6] = [
     // Fq2(u + 9)**(((q^0) - 1) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xd35d438dc58f0d9d,
-                0x0a78eb28f5c70b3d,
-                0x666ea36f7879462c,
-                0x0e0a77c19a07df2f,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xd35d438dc58f0d9d,
+                    0x0a78eb28f5c70b3d,
+                    0x666ea36f7879462c,
+                    0x0e0a77c19a07df2f,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 9)**(((q^1) - 1) / 3)
     // taken from go-ethereum and also re-calculated manually
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xb5773b104563ab30,
-                0x347f91c8a9aa6454,
-                0x7a007127242e0991,
-                0x1956bcd8118214ec,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x6e849f1ea0aa4757,
-                0xaa1c7b6d89f89141,
-                0xb6e713cdfae0ca3a,
-                0x26694fbb4e82ebc3,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xb5773b104563ab30,
+                    0x347f91c8a9aa6454,
+                    0x7a007127242e0991,
+                    0x1956bcd8118214ec,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x6e849f1ea0aa4757,
+                    0xaa1c7b6d89f89141,
+                    0xb6e713cdfae0ca3a,
+                    0x26694fbb4e82ebc3,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 9)**(((q^2) - 1) / 3)
     // this one and other below are recalculated manually
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x3350c88e13e80b9c,
-                0x7dce557cdb5e56b9,
-                0x6001b4b8b615564a,
-                0x2682e617020217e0,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x3350c88e13e80b9c,
+                    0x7dce557cdb5e56b9,
+                    0x6001b4b8b615564a,
+                    0x2682e617020217e0,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 9)**(((q^3) - 1) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xc9af22f716ad6bad,
-                0xb311782a4aa662b2,
-                0x19eeaf64e248c7f4,
-                0x20273e77e3439f82,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0xacc02860f7ce93ac,
-                0x3933d5817ba76b4c,
-                0x69e6188b446c8467,
-                0x0a46036d4417cc55,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xc9af22f716ad6bad,
+                    0xb311782a4aa662b2,
+                    0x19eeaf64e248c7f4,
+                    0x20273e77e3439f82,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0xacc02860f7ce93ac,
+                    0x3933d5817ba76b4c,
+                    0x69e6188b446c8467,
+                    0x0a46036d4417cc55,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 9)**(((q^4) - 1) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x71930c11d782e155,
-                0xa6bb947cffbe3323,
-                0xaa303344d4741444,
-                0x2c3b3f0d26594943,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x71930c11d782e155,
+                    0xa6bb947cffbe3323,
+                    0xaa303344d4741444,
+                    0x2c3b3f0d26594943,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 9)**(((q^5) - 1) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xf91aba2654e8e3b1,
-                0x4771cb2fdc92ce12,
-                0xdcb16ae0fc8bdf35,
-                0x274aa195cd9d8be4,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x5cfc50ae18811f8b,
-                0x4bb28433cb43988c,
-                0x4fd35f13c3b56219,
-                0x301949bd2fc8883a,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xf91aba2654e8e3b1,
+                    0x4771cb2fdc92ce12,
+                    0xdcb16ae0fc8bdf35,
+                    0x274aa195cd9d8be4,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x5cfc50ae18811f8b,
+                    0x4bb28433cb43988c,
+                    0x4fd35f13c3b56219,
+                    0x301949bd2fc8883a,
+                ],
+            },
+        ],
+    }),
 ];
 
 pub const FROBENIUS_COEFF_FQ6_C2: [Fq2; 6] = [
     // Fq2(u + 1)**(((2q^0) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xd35d438dc58f0d9d,
-                0x0a78eb28f5c70b3d,
-                0x666ea36f7879462c,
-                0x0e0a77c19a07df2f,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xd35d438dc58f0d9d,
+                    0x0a78eb28f5c70b3d,
+                    0x666ea36f7879462c,
+                    0x0e0a77c19a07df2f,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((2q^1) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x7361d77f843abe92,
-                0xa5bb2bd3273411fb,
-                0x9c941f314b3e2399,
-                0x15df9cddbb9fd3ec,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x5dddfd154bd8c949,
-                0x62cb29a5a4445b60,
-                0x37bc870a0c7dd2b9,
-                0x24830a9d3171f0fd,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x7361d77f843abe92,
+                    0xa5bb2bd3273411fb,
+                    0x9c941f314b3e2399,
+                    0x15df9cddbb9fd3ec,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x5dddfd154bd8c949,
+                    0x62cb29a5a4445b60,
+                    0x37bc870a0c7dd2b9,
+                    0x24830a9d3171f0fd,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((2q^2) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x71930c11d782e155,
-                0xa6bb947cffbe3323,
-                0xaa303344d4741444,
-                0x2c3b3f0d26594943,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x71930c11d782e155,
+                    0xa6bb947cffbe3323,
+                    0xaa303344d4741444,
+                    0x2c3b3f0d26594943,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((2q^3) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x448a93a57b6762df,
-                0xbfd62df528fdeadf,
-                0xd858f5d00e9bd47a,
-                0x06b03d4d3476ec58,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x2b19daf4bcc936d1,
-                0xa1a54e7a56f4299f,
-                0xb533eee05adeaef1,
-                0x170c812b84dda0b2,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x448a93a57b6762df,
+                    0xbfd62df528fdeadf,
+                    0xd858f5d00e9bd47a,
+                    0x06b03d4d3476ec58,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x2b19daf4bcc936d1,
+                    0xa1a54e7a56f4299f,
+                    0xb533eee05adeaef1,
+                    0x170c812b84dda0b2,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((2q^4) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x3350c88e13e80b9c,
-                0x7dce557cdb5e56b9,
-                0x6001b4b8b615564a,
-                0x2682e617020217e0,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x3350c88e13e80b9c,
+                    0x7dce557cdb5e56b9,
+                    0x6001b4b8b615564a,
+                    0x2682e617020217e0,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((2q^5) - 2) / 3)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x843420f1d8dadbd6,
-                0x31f010c9183fcdb2,
-                0x436330b527a76049,
-                0x13d47447f11adfe4,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0xef494023a857fa74,
-                0x2a925d02d5ab101a,
-                0x83b015829ba62f10,
-                0x2539111d0c13aea3,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x843420f1d8dadbd6,
+                    0x31f010c9183fcdb2,
+                    0x436330b527a76049,
+                    0x13d47447f11adfe4,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0xef494023a857fa74,
+                    0x2a925d02d5ab101a,
+                    0x83b015829ba62f10,
+                    0x2539111d0c13aea3,
+                ],
+            },
+        ],
+    }),
 ];
 
 // non_residue^((modulus^i-1)/6) for i=0,...,11
 pub const FROBENIUS_COEFF_FQ12_C1: [Fq2; 12] = [
     // Fq2(u + 1)**(((q^0) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xd35d438dc58f0d9d,
-                0x0a78eb28f5c70b3d,
-                0x666ea36f7879462c,
-                0x0e0a77c19a07df2f,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xd35d438dc58f0d9d,
+                    0x0a78eb28f5c70b3d,
+                    0x666ea36f7879462c,
+                    0x0e0a77c19a07df2f,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^1) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xaf9ba69633144907,
-                0xca6b1d7387afb78a,
-                0x11bded5ef08a2087,
-                0x02f34d751a1f3a7c,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0xa222ae234c492d72,
-                0xd00f02a4565de15b,
-                0xdc2ff3a253dfc926,
-                0x10a75716b3899551,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xaf9ba69633144907,
+                    0xca6b1d7387afb78a,
+                    0x11bded5ef08a2087,
+                    0x02f34d751a1f3a7c,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0xa222ae234c492d72,
+                    0xd00f02a4565de15b,
+                    0xdc2ff3a253dfc926,
+                    0x10a75716b3899551,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^2) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xca8d800500fa1bf2,
-                0xf0c5d61468b39769,
-                0x0e201271ad0d4418,
-                0x04290f65bad856e6,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xca8d800500fa1bf2,
+                    0xf0c5d61468b39769,
+                    0x0e201271ad0d4418,
+                    0x04290f65bad856e6,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^3) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x365316184e46d97d,
-                0x0af7129ed4c96d9f,
-                0x659da72fca1009b5,
-                0x08116d8983a20d23,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0xb1df4af7c39c1939,
-                0x3d9f02878a73bf7f,
-                0x9b2220928caf0ae0,
-                0x26684515eff054a6,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x365316184e46d97d,
+                    0x0af7129ed4c96d9f,
+                    0x659da72fca1009b5,
+                    0x08116d8983a20d23,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0xb1df4af7c39c1939,
+                    0x3d9f02878a73bf7f,
+                    0x9b2220928caf0ae0,
+                    0x26684515eff054a6,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^4) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x3350c88e13e80b9c,
-                0x7dce557cdb5e56b9,
-                0x6001b4b8b615564a,
-                0x2682e617020217e0,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x3350c88e13e80b9c,
+                    0x7dce557cdb5e56b9,
+                    0x6001b4b8b615564a,
+                    0x2682e617020217e0,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^5) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x86b76f821b329076,
-                0x408bf52b4d19b614,
-                0x53dfb9d0d985e92d,
-                0x051e20146982d2a7,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x0fbc9cd47752ebc7,
-                0x6d8fffe33415de24,
-                0xbef22cf038cf41b9,
-                0x15c0edff3c66bf54,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x86b76f821b329076,
+                    0x408bf52b4d19b614,
+                    0x53dfb9d0d985e92d,
+                    0x051e20146982d2a7,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x0fbc9cd47752ebc7,
+                    0x6d8fffe33415de24,
+                    0xbef22cf038cf41b9,
+                    0x15c0edff3c66bf54,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^6) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x68c3488912edefaa,
-                0x8d087f6872aabf4f,
-                0x51e1a24709081231,
-                0x2259d6b14729c0fa,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x68c3488912edefaa,
+                    0x8d087f6872aabf4f,
+                    0x51e1a24709081231,
+                    0x2259d6b14729c0fa,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^7) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x8c84e580a568b440,
-                0xcd164d1de0c21302,
-                0xa692585790f737d5,
-                0x2d7100fdc71265ad,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x99fdddf38c33cfd5,
-                0xc77267ed1213e931,
-                0xdc2052142da18f36,
-                0x1fbcf75c2da80ad7,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x8c84e580a568b440,
+                    0xcd164d1de0c21302,
+                    0xa692585790f737d5,
+                    0x2d7100fdc71265ad,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x99fdddf38c33cfd5,
+                    0xc77267ed1213e931,
+                    0xdc2052142da18f36,
+                    0x1fbcf75c2da80ad7,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^8) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x71930c11d782e155,
-                0xa6bb947cffbe3323,
-                0xaa303344d4741444,
-                0x2c3b3f0d26594943,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x71930c11d782e155,
+                    0xa6bb947cffbe3323,
+                    0xaa303344d4741444,
+                    0x2c3b3f0d26594943,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^9) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x05cd75fe8a3623ca,
-                0x8c8a57f293a85cee,
-                0x52b29e86b7714ea8,
-                0x2852e0e95d8f9306,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x8a41411f14e0e40e,
-                0x59e26809ddfe0b0d,
-                0x1d2e2523f4d24d7d,
-                0x09fc095cf1414b83,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x05cd75fe8a3623ca,
+                    0x8c8a57f293a85cee,
+                    0x52b29e86b7714ea8,
+                    0x2852e0e95d8f9306,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x8a41411f14e0e40e,
+                    0x59e26809ddfe0b0d,
+                    0x1d2e2523f4d24d7d,
+                    0x09fc095cf1414b83,
+                ],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^10) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0x08cfc388c494f1ab,
-                0x19b315148d1373d4,
-                0x584e90fdcb6c0213,
-                0x09e1685bdf2f8849,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [0x0, 0x0, 0x0, 0x0],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0x08cfc388c494f1ab,
+                    0x19b315148d1373d4,
+                    0x584e90fdcb6c0213,
+                    0x09e1685bdf2f8849,
+                ],
+            },
+            mcl_fq {
+                d: [0x0, 0x0, 0x0, 0x0],
+            },
+        ],
+    }),
     // Fq2(u + 1)**(((q^11) - 1) / 6)
-    Fq2 {
-        c0: Fq(MclFq {
-            d: [
-                0xb5691c94bd4a6cd1,
-                0x56f575661b581478,
-                0x64708be5a7fb6f30,
-                0x2b462e5e77aecd82,
-            ],
-        }),
-        c1: Fq(MclFq {
-            d: [
-                0x2c63ef42612a1180,
-                0x29f16aae345bec69,
-                0xf95e18c648b216a4,
-                0x1aa36073a4cae0d4,
-            ],
-        }),
-    },
+    Fq2(mcl_fq2 {
+        d: [
+            mcl_fq {
+                d: [
+                    0xb5691c94bd4a6cd1,
+                    0x56f575661b581478,
+                    0x64708be5a7fb6f30,
+                    0x2b462e5e77aecd82,
+                ],
+            },
+            mcl_fq {
+                d: [
+                    0x2c63ef42612a1180,
+                    0x29f16aae345bec69,
+                    0xf95e18c648b216a4,
+                    0x1aa36073a4cae0d4,
+                ],
+            },
+        ],
+    }),
 ];
 
 // -((2**256) mod q) mod q
-pub const NEGATIVE_ONE: Fq = Fq(MclFq {
+pub const NEGATIVE_ONE: Fq = Fq(mcl_fq {
     d: [
         0x974bc177a0000006,
         0xf13771b2da58a367,
@@ -588,14 +641,14 @@ impl AsMut<[u64]> for FqRepr {
     }
 }
 
-impl AsRef<MclFq> for Fq {
-    fn as_ref(&self) -> &MclFq {
+impl AsRef<mcl_fq> for Fq {
+    fn as_ref(&self) -> &mcl_fq {
         &self.0
     }
 }
 
-impl AsMut<MclFq> for Fq {
-    fn as_mut(&mut self) -> &mut MclFq {
+impl AsMut<mcl_fq> for Fq {
+    fn as_mut(&mut self) -> &mut mcl_fq {
         &mut self.0
     }
 }
@@ -840,14 +893,14 @@ impl From<Fq> for FqRepr {
     }
 }
 
-impl From<Fq> for MclFq {
-    fn from(val: Fq) -> MclFq {
+impl From<Fq> for mcl_fq {
+    fn from(val: Fq) -> mcl_fq {
         val.0
     }
 }
 
-impl From<MclFq> for Fq {
-    fn from(val: MclFq) -> Fq {
+impl From<mcl_fq> for Fq {
+    fn from(val: mcl_fq) -> Fq {
         Fq(val)
     }
 }
@@ -920,11 +973,11 @@ impl<'a, 'b> Mul<&'b Fq> for &'a Fq {
 
 impl Field for Fq {
     fn zero() -> Self {
-        Fq(MclFq { d: [0, 0, 0, 0] })
+        Fq(mcl_fq { d: [0, 0, 0, 0] })
     }
 
     fn one() -> Self {
-        Fq(MclFq {
+        Fq(mcl_fq {
             d: [
                 0xd35d438dc58f0d9d,
                 0xa78eb28f5c70b3d,
@@ -974,8 +1027,8 @@ impl Field for Fq {
             return None;
         }
 
-        let mut x = unsafe { MclFq::uninit() };
-        MclFq::inv(&mut x, self.as_ref());
+        let mut x = unsafe { mcl_fq::uninit() };
+        mcl_fq::inv(&mut x, self.as_ref());
 
         Some(Fq(x))
     }
@@ -998,7 +1051,7 @@ impl ::rand::Rand for Fq {
     /// `_rng` is for compatible with old call
     fn rand<R: ::rand::Rng>(_rng: &mut R) -> Self {
         check_curve_init();
-        let mut x = MclFq::default();
+        let mut x = mcl_fq::default();
         x.set_by_csprng();
         Fq(x)
     }
@@ -1017,7 +1070,7 @@ impl FqRepr {
     }
 }
 
-const R2: Fq = Fq(MclFq {
+const R2: Fq = Fq(mcl_fq {
     d: [
         0xf32cfc5b538afa89,
         0xb5e71911d44501fb,
@@ -1031,7 +1084,7 @@ impl PrimeField for Fq {
 
     fn from_repr(repr: Self::Repr) -> Result<Self, PrimeFieldDecodingError> {
         if FqRepr(repr.0) < MODULUS {
-            let mut out = Fq(MclFq { d: repr.0 });
+            let mut out = Fq(mcl_fq { d: repr.0 });
             out.mul_assign(&R2);
 
             Ok(out)
@@ -1043,7 +1096,7 @@ impl PrimeField for Fq {
     }
     fn from_raw_repr(repr: Self::Repr) -> Result<Self, PrimeFieldDecodingError> {
         if FqRepr(repr.0) < MODULUS {
-            Ok(Fq(MclFq { d: repr.0 }))
+            Ok(Fq(mcl_fq { d: repr.0 }))
         } else {
             Err(PrimeFieldDecodingError::NotInField(
                 "not in field".to_string(),
@@ -1054,8 +1107,8 @@ impl PrimeField for Fq {
     /// the number is an element of the field.
     fn into_repr(&self) -> Self::Repr {
         check_curve_init();
-        let mut out = unsafe { MclFq::uninit() };
-        MclFq::mul(&mut out, self.as_ref(), &MclFq { d: R.0 });
+        let mut out = unsafe { mcl_fq::uninit() };
+        mcl_fq::mul(&mut out, self.as_ref(), &mcl_fq { d: R.0 });
         FqRepr(out.d)
     }
 
@@ -1137,7 +1190,7 @@ impl Fq {
     /// a scalar into an `Fq`, failing if the input is not canonical.
     pub fn from_bytes_le(bytes: &[u8; 32]) -> Option<Fq> {
         check_curve_init();
-        let mut raw = unsafe { MclFq::uninit() };
+        let mut raw = unsafe { mcl_fq::uninit() };
 
         let l = raw.deserialize(bytes);
 
@@ -1181,8 +1234,8 @@ impl Fq {
     pub fn add(&self, rhs: &Fq) -> Fq {
         check_curve_init();
 
-        let mut out = unsafe { MclFq::uninit() };
-        MclFq::add(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fq::uninit() };
+        mcl_fq::add(&mut out, self.as_ref(), rhs.as_ref());
 
         Fq(out)
     }
@@ -1199,8 +1252,8 @@ impl Fq {
     pub fn sub(&self, rhs: &Fq) -> Fq {
         check_curve_init();
 
-        let mut out = unsafe { MclFq::uninit() };
-        MclFq::sub(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fq::uninit() };
+        mcl_fq::sub(&mut out, self.as_ref(), rhs.as_ref());
 
         Fq(out)
     }
@@ -1209,8 +1262,8 @@ impl Fq {
     pub fn mul(&self, rhs: &Fq) -> Fq {
         check_curve_init();
 
-        let mut out = unsafe { MclFq::uninit() };
-        MclFq::mul(&mut out, self.as_ref(), rhs.as_ref());
+        let mut out = unsafe { mcl_fq::uninit() };
+        mcl_fq::mul(&mut out, self.as_ref(), rhs.as_ref());
 
         Fq(out)
     }
@@ -1225,7 +1278,7 @@ impl Fq {
 mod tests {
     use super::{Fq, FqRepr, MODULUS};
     use crate::bn256::check_curve_init;
-    use crate::mcl::Fp as MclFq;
+    use crate::mcl::Fp as mcl_fq;
     use ff::{Field, PrimeField, PrimeFieldRepr, SqrtField};
     use rand::Rand;
 
@@ -1262,12 +1315,12 @@ mod tests {
     #[test]
     fn test_fq_is_valid() {
         check_curve_init();
-        let mut a = Fq(MclFq { d: MODULUS.0 });
+        let mut a = Fq(mcl_fq { d: MODULUS.0 });
         assert!(!a.is_valid());
-        a = &a - &Fq(MclFq { d: [1, 0, 0, 0] });
+        a = &a - &Fq(mcl_fq { d: [1, 0, 0, 0] });
         assert!(a.is_valid());
         assert!(Fq::from(0u64).is_valid());
-        assert!(Fq(MclFq {
+        assert!(Fq(mcl_fq {
             d: [
                 0xdf4671abd14dab3e,
                 0xe2dc0c9f534fbd33,
@@ -1276,7 +1329,7 @@ mod tests {
             ]
         })
         .is_valid());
-        assert!(!Fq(MclFq {
+        assert!(!Fq(mcl_fq {
             d: [
                 0xffffffffffffffff,
                 0xffffffffffffffff,

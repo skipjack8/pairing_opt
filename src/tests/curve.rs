@@ -66,8 +66,8 @@ pub fn curve_tests<G: CurveProjective>() {
 }
 
 fn random_wnaf_tests<G: CurveProjective>() {
-    use ff::PrimeField;
     use crate::wnaf::*;
+    use ff::PrimeField;
 
     let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
 
@@ -364,9 +364,9 @@ pub fn random_transformation_tests<G: CurveProjective>() {
         for _ in 0..5 {
             v[between.ind_sample(&mut rng)] = G::zero();
         }
-        for _ in 0..5 {
-            let s = between.ind_sample(&mut rng);
-            v[s] = v[s].into_affine().into_projective();
+        for vi in v.iter_mut() {
+            let tmp = vi.into_affine();
+            *vi = tmp.into_projective();
         }
 
         let expected_v = v
@@ -398,7 +398,6 @@ pub fn random_transformation_tests_with_cofactor<G: CurveProjective>() {
         let mut v = (0..1000).map(|_| G::rand(&mut rng)).collect::<Vec<_>>();
 
         for i in &v {
-
             assert!(!i.is_normalized());
         }
 
