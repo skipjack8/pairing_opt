@@ -4,7 +4,8 @@ mod fq12;
 mod fq2;
 mod fq6;
 mod fr;
-// mod g1;
+mod g1;
+mod g2;
 
 pub use self::ec::{
     G1Affine, G1Compressed, G1Prepared, G1Uncompressed, G2Affine, G2Compressed, G2Prepared,
@@ -19,6 +20,8 @@ pub use self::fr::{Fr, FrRepr};
 use super::{CurveAffine, Engine};
 
 use ff::{Field, ScalarEngine};
+
+use std::ops::{AddAssign, MulAssign, SubAssign};
 
 #[derive(Clone, Debug)]
 pub struct Bn256;
@@ -67,11 +70,11 @@ impl Engine for Bn256 {
             let mut c0 = coeffs.0;
             let mut c1 = coeffs.1;
 
-            c0.c0.mul_assign(&p.y);
-            c0.c1.mul_assign(&p.y);
+            c0.c0_mut().mul_assign(&p.y.0);
+            c0.c1_mut().mul_assign(&p.y.0);
 
-            c1.c0.mul_assign(&p.x);
-            c1.c1.mul_assign(&p.x);
+            c1.c0_mut().mul_assign(&p.x.0);
+            c1.c1_mut().mul_assign(&p.x.0);
 
             // Sparse multiplication in Fq12
             f.mul_by_034(&c0, &c1, &coeffs.2);
@@ -230,17 +233,17 @@ impl G2Prepared {
 
         fn doubling_step(r: &mut G2) -> (Fq2, Fq2, Fq2) {
             // Adaptation of Algorithm 26, https://eprint.iacr.org/2010/354.pdf
-            let mut tmp0 = r.x;
+            let mut tmp0 = r.0.x;
             tmp0.square();
 
-            let mut tmp1 = r.y;
+            let mut tmp1 = r.0.y;
             tmp1.square();
 
             let mut tmp2 = tmp1;
             tmp2.square();
 
             let mut tmp3 = tmp1;
-            tmp3.add_assign(&r.x);
+            tmp3.add_assign(&r.0.x);
             tmp3.square();
             tmp3.sub_assign(&tmp0);
             tmp3.sub_assign(&tmp2);
@@ -250,33 +253,33 @@ impl G2Prepared {
             tmp4.double();
             tmp4.add_assign(&tmp0);
 
-            let mut tmp6 = r.x;
+            let mut tmp6 = r.0.x;
             tmp6.add_assign(&tmp4);
 
             let mut tmp5 = tmp4;
             tmp5.square();
 
-            let mut zsquared = r.z;
+            let mut zsquared = r.0.z;
             zsquared.square();
 
-            r.x = tmp5;
-            r.x.sub_assign(&tmp3);
-            r.x.sub_assign(&tmp3);
+            r.0.x = tmp5;
+            r.0.x.sub_assign(&tmp3);
+            r.0.x.sub_assign(&tmp3);
 
-            r.z.add_assign(&r.y);
-            r.z.square();
-            r.z.sub_assign(&tmp1);
-            r.z.sub_assign(&zsquared);
+            r.0.z.add_assign(&r.0.y);
+            r.0.z.square();
+            r.0.z.sub_assign(&tmp1);
+            r.0.z.sub_assign(&zsquared);
 
-            r.y = tmp3;
-            r.y.sub_assign(&r.x);
-            r.y.mul_assign(&tmp4);
+            r.0.y = tmp3;
+            r.0.y.sub_assign(&r.0.x);
+            r.0.y.mul_assign(&tmp4);
 
             tmp2.double();
             tmp2.double();
             tmp2.double();
 
-            r.y.sub_assign(&tmp2);
+            r.0.y.sub_assign(&tmp2);
 
             // up to here everything was by algorith, line 11
             // use R instead of new T
@@ -298,45 +301,49 @@ impl G2Prepared {
             tmp6.sub_assign(&tmp1);
 
             // tmp0 is the first part of line 16
-            tmp0 = r.z;
+            tmp0 = r.0.z;
             tmp0.mul_assign(&zsquared);
             tmp0.double();
 
-            (tmp0, tmp3, tmp6)
+            (Fq2(tmp0), Fq2(tmp3), Fq2(tmp6))
         }
 
         fn addition_step(r: &mut G2, q: &G2Affine) -> (Fq2, Fq2, Fq2) {
             // Adaptation of Algorithm 27, https://eprint.iacr.org/2010/354.pdf
-            let mut zsquared = r.z;
-            zsquared.square();
+            check_curve_init();
 
-            let mut ysquared = q.y;
-            ysquared.square();
+            let mut zsquared = r.0.z;
+            unsafe { mclBnFp2_sqr(&mut zsquared, &zsquared) };
+
+            let mut ysquared = q.y.0;
+            unsafe { mclBnFp2_sqr(&mut ysquared, &ysquared) };
 
             // t0 corresponds to line 1
             let mut t0 = zsquared;
-            t0.mul_assign(&q.x);
+            t0.mul_assign(&q.x.0);
 
             // t1 corresponds to lines 2 and 3
-            let mut t1 = q.y;
-            t1.add_assign(&r.z);
-            t1.square();
+            let mut t1 = q.y.0;
+            t1.add_assign(&r.0.z);
+            unsafe { mclBnFp2_sqr(&mut t1, &t1) };
             t1.sub_assign(&ysquared);
             t1.sub_assign(&zsquared);
             t1.mul_assign(&zsquared);
 
             // t2 corresponds to line 4
             let mut t2 = t0;
-            t2.sub_assign(&r.x);
+            t2.sub_assign(&r.0.x);
 
             // t3 corresponds to line 5
             let mut t3 = t2;
-            t3.square();
+            unsafe { mclBnFp2_sqr(&mut t3, &t3) };
 
             // t4 corresponds to line 6
             let mut t4 = t3;
-            t4.double();
-            t4.double();
+            unsafe {
+                mclBnFp2_add(&mut t4, &t4, &t4);
+                mclBnFp2_add(&mut t4, &t4, &t4);
+            }
 
             // t5 corresponds to line 7
             let mut t5 = t4;
@@ -344,73 +351,73 @@ impl G2Prepared {
 
             // t6 corresponds to line 8
             let mut t6 = t1;
-            t6.sub_assign(&r.y);
-            t6.sub_assign(&r.y);
+            t6.sub_assign(&r.0.y);
+            t6.sub_assign(&r.0.y);
 
             // t9 corresponds to line 9
             let mut t9 = t6;
-            t9.mul_assign(&q.x);
+            t9.mul_assign(&q.x.0);
 
             // corresponds to line 10
             let mut t7 = t4;
-            t7.mul_assign(&r.x);
+            t7.mul_assign(&r.0.x);
 
             // corresponds to line 11, but assigns to r.x instead of T.x
-            r.x = t6;
-            r.x.square();
-            r.x.sub_assign(&t5);
-            r.x.sub_assign(&t7);
-            r.x.sub_assign(&t7);
+            r.0.x = t6;
+            unsafe { mclBnFp2_sqr(&mut r.0.x, &r.0.x) };
+            r.0.x.sub_assign(&t5);
+            r.0.x.sub_assign(&t7);
+            r.0.x.sub_assign(&t7);
 
             // corresponds to line 12, but assigns to r.z instead of T.z
-            r.z.add_assign(&t2);
-            r.z.square();
-            r.z.sub_assign(&zsquared);
-            r.z.sub_assign(&t3);
+            r.0.z.add_assign(&t2);
+            unsafe { mclBnFp2_sqr(&mut r.0.z, &r.0.z) };
+            r.0.z.sub_assign(&zsquared);
+            r.0.z.sub_assign(&t3);
 
             // corresponds to line 13
-            let mut t10 = q.y;
-            t10.add_assign(&r.z);
+            let mut t10 = q.y.0;
+            t10.add_assign(&r.0.z);
 
             // corresponds to line 14
             let mut t8 = t7;
-            t8.sub_assign(&r.x);
+            t8.sub_assign(&r.0.x);
             t8.mul_assign(&t6);
 
             // corresponds to line 15
-            t0 = r.y;
+            t0 = r.0.y;
             t0.mul_assign(&t5);
-            t0.double();
+            unsafe { mclBnFp2_add(&mut t0, &t0, &t0) };
 
             // corresponds to line 12, but assigns to r.y instead of T.y
-            r.y = t8;
-            r.y.sub_assign(&t0);
+            r.0.y = t8;
+            r.0.y.sub_assign(&t0);
 
             // corresponds to line 17
-            t10.square();
+            unsafe { mclBnFp2_sqr(&mut t10, &t10) };
             t10.sub_assign(&ysquared);
 
-            let mut ztsquared = r.z;
-            ztsquared.square();
+            let mut ztsquared = r.0.z;
+            unsafe { mclBnFp2_sqr(&mut ztsquared, &ztsquared) };
 
             t10.sub_assign(&ztsquared);
 
             // corresponds to line 18
-            t9.double();
+            unsafe { mclBnFp2_add(&mut t9, &t9, &t9) };
             t9.sub_assign(&t10);
 
             // t10 = 2*Zt from Algo 27, line 19
-            t10 = r.z;
-            t10.double();
+            t10 = r.0.z;
+            unsafe { mclBnFp2_add(&mut t10, &t10, &t10) };
 
             // t1 = first multiplicator of line 21
-            t6.negate();
+            unsafe { mclBnFp2_neg(&mut t6, &t6) };
 
             t1 = t6;
-            t1.double();
+            unsafe { mclBnFp2_add(&mut t1, &t1, &t1) };
 
             // t9 corresponds to t9 from Algo 27
-            (t10, t1, t9)
+            (Fq2(t10), Fq2(t1), Fq2(t9))
         }
 
         let mut coeffs = vec![];
@@ -435,10 +442,10 @@ impl G2Prepared {
 
         let mut q1 = q;
 
-        q1.x.c1.negate();
+        unsafe { mclBnFp_neg(q1.x.c1_mut(), q1.x.c1_ref()) };
         q1.x.mul_assign(&FROBENIUS_COEFF_FQ6_C1[1]);
 
-        q1.y.c1.negate();
+        unsafe { mclBnFp_neg(q1.y.c1_mut(), q1.y.c1_ref()) };
         q1.y.mul_assign(&XI_TO_Q_MINUS_1_OVER_2);
 
         coeffs.push(addition_step(&mut r, &q1));
@@ -588,7 +595,7 @@ fn bn256_engine_tests() {
     crate::tests::engine::engine_tests::<Bn256>();
 }
 
-use crate::mcl::{init, CurveType};
+use crate::mcl::{init, mclBnFp2_add, mclBnFp2_neg, mclBnFp2_sqr, mclBnFp_neg, CurveType};
 use lazy_static::lazy_static;
 lazy_static! {
     pub static ref IS_INIT: bool = init(CurveType::BN254);

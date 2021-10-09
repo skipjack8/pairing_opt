@@ -22,9 +22,9 @@ pub extern crate ff;
 
 pub use ff::*;
 
-pub mod bls12_381;
+// pub mod bls12_381;
 pub mod bn256;
-pub mod compact_bn256;
+// pub mod compact_bn256;
 mod mcl;
 
 mod wnaf;

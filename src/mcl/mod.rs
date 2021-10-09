@@ -77,7 +77,7 @@ extern "C" {
 
     fn mclBnFp_mul(z: *mut Fp, x: *const Fp, y: *const Fp);
     fn mclBnFp_div(z: *mut Fp, x: *const Fp, y: *const Fp);
-    fn mclBnFp_inv(y: *mut Fp, x: *const Fp);
+    pub fn mclBnFp_inv(y: *mut Fp, x: *const Fp);
     pub fn mclBnFp_sqr(y: *mut Fp, x: *const Fp);
     fn mclBnFp_squareRoot(y: *mut Fp, x: *const Fp) -> i32;
 
@@ -90,9 +90,9 @@ extern "C" {
     fn mclBnFp2_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fp2) -> usize;
     fn mclBnFp2_deserialize(x: *mut Fp2, buf: *const u8, bufSize: usize) -> usize;
 
-    fn mclBnFp2_add(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
+    pub fn mclBnFp2_add(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
     fn mclBnFp2_sub(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
-    fn mclBnFp2_neg(y: *mut Fp2, x: *const Fp2);
+    pub fn mclBnFp2_neg(y: *mut Fp2, x: *const Fp2);
 
     fn mclBnFp2_mul(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
     fn mclBnFp2_div(z: *mut Fp2, x: *const Fp2, y: *const Fp2);
@@ -110,12 +110,12 @@ extern "C" {
     fn mclBnG1_serialize(buf: *mut u8, maxBufSize: usize, x: *const G1) -> usize;
     fn mclBnG1_deserialize(x: *mut G1, buf: *const u8, bufSize: usize) -> usize;
 
-    fn mclBnG1_add(z: *mut G1, x: *const G1, y: *const G1);
+    pub fn mclBnG1_add(z: *mut G1, x: *const G1, y: *const G1);
     fn mclBnG1_sub(z: *mut G1, x: *const G1, y: *const G1);
     pub fn mclBnG1_neg(y: *mut G1, x: *const G1);
 
     pub fn mclBnG1_dbl(y: *mut G1, x: *const G1);
-    pub fn mclBnG1_mul(z: *mut G1, x: *const G1, y: *const Fr);
+    fn mclBnG1_mul(z: *mut G1, x: *const G1, y: *const Fr);
     pub fn mclBnG1_normalize(y: *mut G1, x: *const G1);
     fn mclBnG1_hashAndMapTo(x: *mut G1, buf: *const u8, bufSize: usize) -> c_int;
 
@@ -129,11 +129,11 @@ extern "C" {
     fn mclBnG2_serialize(buf: *mut u8, maxBufSize: usize, x: *const G2) -> usize;
     fn mclBnG2_deserialize(x: *mut G2, buf: *const u8, bufSize: usize) -> usize;
 
-    fn mclBnG2_add(z: *mut G2, x: *const G2, y: *const G2);
+    pub fn mclBnG2_add(z: *mut G2, x: *const G2, y: *const G2);
     fn mclBnG2_sub(z: *mut G2, x: *const G2, y: *const G2);
-    fn mclBnG2_neg(y: *mut G2, x: *const G2);
+    pub fn mclBnG2_neg(y: *mut G2, x: *const G2);
 
-    fn mclBnG2_dbl(y: *mut G2, x: *const G2);
+    pub fn mclBnG2_dbl(y: *mut G2, x: *const G2);
     fn mclBnG2_mul(z: *mut G2, x: *const G2, y: *const Fr);
     fn mclBnG2_normalize(y: *mut G2, x: *const G2);
     fn mclBnG2_hashAndMapTo(x: *mut G2, buf: *const u8, bufSize: usize) -> c_int;
@@ -476,6 +476,18 @@ impl Fp2 {
     pub fn square_root(y: &mut Fp2, x: &Fp2) -> bool {
         unsafe { mclBnFp2_squareRoot(y, x) == 0 }
     }
+
+    pub fn square(&mut self) {
+        unsafe { mclBnFp2_sqr(self, self) };
+    }
+
+    pub fn double(&mut self) {
+        unsafe { mclBnFp2_add(self, self, self) };
+    }
+
+    pub fn negate(&mut self) {
+        unsafe { mclBnFp2_neg(self, self) };
+    }
 }
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -540,7 +552,7 @@ ec_impl![
     mclBnG1_hashAndMapTo
 ];
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy, Eq)]
 #[repr(C)]
 pub struct G2 {
     pub x: Fp2,

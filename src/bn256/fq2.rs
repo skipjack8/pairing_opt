@@ -1,8 +1,6 @@
-use super::fq::{Fq, FROBENIUS_COEFF_FQ2_C1, NEGATIVE_ONE};
+use super::fq::{Fq, FROBENIUS_COEFF_FQ2_C1};
 use crate::bn256::check_curve_init;
-use crate::mcl::{
-    mclBnFp2_inv, mclBnFp2_sqr, mclBnFp_add, mclBnFp_neg, mclBnFp_sqr, Fp as mcl_fq, Fp2 as mcl_fq2,
-};
+use crate::mcl::{mclBnFp2_sqr, mclBnFp_add, mclBnFp_neg, Fp as mcl_fq, Fp2 as mcl_fq2};
 
 use ff::{Field, SqrtField};
 use rand::{Rand, Rng};
@@ -14,28 +12,32 @@ use std::ops::{AddAssign, MulAssign, SubAssign};
 pub struct Fq2(pub(crate) mcl_fq2);
 
 impl Fq2 {
-    fn c0(&self) -> Fq {
+    pub(crate) fn c0(&self) -> Fq {
         Fq(self.0.d[0])
     }
 
-    fn c1(&self) -> Fq {
+    pub(crate) fn c1(&self) -> Fq {
         Fq(self.0.d[1])
     }
 
-    fn c0_ref(&self) -> &mcl_fq {
+    pub(crate) fn c0_ref(&self) -> &mcl_fq {
         &self.0.d[0]
     }
 
-    fn c1_ref(&self) -> &mcl_fq {
+    pub(crate) fn c1_ref(&self) -> &mcl_fq {
         &self.0.d[1]
     }
 
-    fn c0_mut(&mut self) -> &mut mcl_fq {
+    pub(crate) fn c0_mut(&mut self) -> &mut mcl_fq {
         &mut self.0.d[0]
     }
 
-    fn c1_mut(&mut self) -> &mut mcl_fq {
+    pub(crate) fn c1_mut(&mut self) -> &mut mcl_fq {
         &mut self.0.d[1]
+    }
+
+    pub(crate) fn from_fq(c0: Fq, c1: Fq) -> Self {
+        Self(mcl_fq2 { d: [c0.0, c1.0] })
     }
 }
 
@@ -873,8 +875,6 @@ fn test_fq2_basics() {
 
 #[test]
 fn test_fq2_squaring() {
-    use super::fq::FqRepr;
-    use ff::PrimeField;
     check_curve_init();
     let mut a = Fq2(mcl_fq2 {
         d: [mcl_fq::one(), mcl_fq::one()],
