@@ -4,8 +4,8 @@ mod fq12;
 mod fq2;
 mod fq6;
 mod fr;
-mod g1;
-mod g2;
+// mod g1;
+// mod g2;
 
 pub use self::ec::{
     G1Affine, G1Compressed, G1Prepared, G1Uncompressed, G2Affine, G2Compressed, G2Prepared,
