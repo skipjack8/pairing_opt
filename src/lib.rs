@@ -30,8 +30,8 @@ mod mcl;
 mod wnaf;
 pub use self::wnaf::Wnaf;
 
-mod base;
-pub use self::base::*;
+// mod base;
+// pub use self::base::*;
 
 use ff::{Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, ScalarEngine, SqrtField};
 use std::error::Error;
