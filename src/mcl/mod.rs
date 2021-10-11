@@ -8,7 +8,7 @@ use std::os::raw::c_int;
 #[link(name = "mcl", kind = "static")]
 #[link(name = "mclbn256", kind = "static")]
 #[link(name = "gmp")]
-#[link(name = "c++")]
+#[link(name = "stdc++")]
 // #[link(name = "crypto")]
 #[allow(non_snake_case)]
 extern "C" {
