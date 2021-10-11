@@ -273,6 +273,20 @@ impl PartialEq for Fr {
 }
 impl Eq for Fr {}
 
+impl Ord for Fr {
+    #[inline(always)]
+    fn cmp(&self, other: &Fr) -> ::std::cmp::Ordering {
+        self.into_repr().cmp(&other.into_repr())
+    }
+}
+
+impl PartialOrd for Fr {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Fr) -> Option<::std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl From<Fr> for FrRepr {
     fn from(val: Fr) -> Self {
         val.into_repr()
